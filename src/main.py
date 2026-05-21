@@ -1,6 +1,7 @@
 from config.simulation_config import SimulationConfig
 from src.pricing.black_scholes import BlackScholesPricer
 from src.pricing.monte_carlo_pricer import MonteCarloPricer
+from src.visualization.plotter import Plotter
 from src.utils.logger import get_logger
 
 logger = get_logger(__name__)
@@ -56,6 +57,10 @@ def main():
     logger.info(f"  BS inside MC 95% CI : "
                 f"{'YES' if mc_result['ci_lower'] <= bs_summary['price'] <= mc_result['ci_upper'] else 'NO'}")
     logger.info("=" * 55)
+
+    # --- Plots ---
+    plotter = Plotter(config)
+    plotter.plot_all(random_seed=42)
 
 
 if __name__ == "__main__":
