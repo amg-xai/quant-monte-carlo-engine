@@ -2,6 +2,7 @@ from config.simulation_config import SimulationConfig
 from src.pricing.black_scholes import BlackScholesPricer
 from src.pricing.monte_carlo_pricer import MonteCarloPricer
 from src.variance_reduction.antithetic_pricer import AntitheticPricer
+from src.analytics.convergence import ConvergenceAnalyzer
 from src.visualization.plotter import Plotter
 from src.utils.logger import get_logger
 
@@ -66,9 +67,14 @@ def main():
     logger.info(f"  Std error reduction    : {std_reduction:.2f}%")
     logger.info("=" * 55)
 
+    # Convergence analysis
+    sim_counts = [100, 250, 500, 1000, 2500, 5000, 10000, 25000, 50000, 100000]
+    analyzer = ConvergenceAnalyzer(config)
+    conv_results = analyzer.run(sim_counts=sim_counts, random_seed=42)
+
     # Plots
     plotter = Plotter(config)
-    plotter.plot_all(random_seed=42)
+    plotter.plot_all(results=conv_results, bs_price=bs_summary["price"], random_seed=42)
 
 
 if __name__ == "__main__":

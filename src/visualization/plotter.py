@@ -137,8 +137,65 @@ class Plotter:
         plt.close()
         logger.info(f"Saved: {path}")
 
-    def plot_all(self, random_seed: int = 42):
+    def plot_convergence(self, results: dict, bs_price: float):
+        """Plot MC vs antithetic convergence toward Black-Scholes price."""
+        logger.info("Generating convergence plot...")
+
+        sim_counts  = np.array(results["sim_counts"])
+        mc_prices   = np.array(results["mc_prices"])
+        mc_errors   = np.array(results["mc_errors"])
+        anti_prices = np.array(results["anti_prices"])
+        anti_errors = np.array(results["anti_errors"])
+
+        fig, (ax1, ax2) = plt.subplots(2, 1, figsize=(12, 10), sharex=True)
+
+        ax1.semilogx(sim_counts, mc_prices, color=ACCENT, linewidth=1.5,
+                     label="Standard MC")
+        ax1.fill_between(sim_counts,
+                         mc_prices - 1.96 * mc_errors,
+                         mc_prices + 1.96 * mc_errors,
+                         color=ACCENT, alpha=0.15, label="MC 95% CI")
+
+        ax1.semilogx(sim_counts, anti_prices, color=SECONDARY, linewidth=1.5,
+                     label="Antithetic")
+        ax1.fill_between(sim_counts,
+                         anti_prices - 1.96 * anti_errors,
+                         anti_prices + 1.96 * anti_errors,
+                         color=SECONDARY, alpha=0.15, label="Antithetic 95% CI")
+
+        ax1.axhline(y=bs_price, color=TERTIARY, linewidth=1.5,
+                    linestyle="--", label=f"Black-Scholes = {bs_price:.4f}")
+
+        ax1.set_title("Price Convergence vs Simulations", fontsize=13, pad=12)
+        ax1.set_ylabel("Estimated Price ($)")
+        ax1.legend(framealpha=0.2, fontsize=9)
+        ax1.grid(True)
+
+        ax2.loglog(sim_counts, mc_errors, color=ACCENT, linewidth=1.5,
+                   label="Standard MC std error")
+        ax2.loglog(sim_counts, anti_errors, color=SECONDARY, linewidth=1.5,
+                   label="Antithetic std error")
+
+        ref = mc_errors[0] * np.sqrt(sim_counts[0]) / np.sqrt(sim_counts)
+        ax2.loglog(sim_counts, ref, color=DIM, linewidth=1,
+                   linestyle=":", label="1/√N reference")
+
+        ax2.set_title("Std Error Convergence (log-log)", fontsize=13, pad=12)
+        ax2.set_xlabel("Number of Simulations")
+        ax2.set_ylabel("Std Error")
+        ax2.legend(framealpha=0.2, fontsize=9)
+        ax2.grid(True)
+
+        plt.tight_layout()
+        path = f"{self.output_dir}/convergence.png"
+        plt.savefig(path, dpi=150, bbox_inches="tight")
+        plt.close()
+        logger.info(f"Saved: {path}")
+
+    def plot_all(self, results: dict = None, bs_price: float = None, random_seed: int = 42):
         self.plot_price_paths(random_seed=random_seed)
         self.plot_terminal_distribution(random_seed=random_seed)
         self.plot_payoff_distribution(random_seed=random_seed)
+        if results is not None and bs_price is not None:
+            self.plot_convergence(results, bs_price)
         logger.info("All plots saved to outputs/plots/")
