@@ -1,10 +1,22 @@
 from config.simulation_config import SimulationConfig
 from src.pricing.black_scholes import BlackScholesPricer
 from src.pricing.monte_carlo_pricer import MonteCarloPricer
+from src.variance_reduction.antithetic_pricer import AntitheticPricer
 from src.visualization.plotter import Plotter
 from src.utils.logger import get_logger
 
 logger = get_logger(__name__)
+
+
+def print_result(label: str, result: dict, bs_price: float):
+    rel_error = abs(bs_price - result["price"]) / bs_price * 100
+    inside_ci = result["ci_lower"] <= bs_price <= result["ci_upper"]
+    logger.info(f"{label}")
+    logger.info(f"  Price     : {result['price']:.6f}")
+    logger.info(f"  Std Error : {result['std_error']:.6f}")
+    logger.info(f"  95% CI    : [{result['ci_lower']:.6f}, {result['ci_upper']:.6f}]")
+    logger.info(f"  Rel Error : {rel_error:.4f}%")
+    logger.info(f"  BS in CI  : {'YES' if inside_ci else 'NO'}")
 
 
 def main():
@@ -23,42 +35,38 @@ def main():
     logger.info("  QUANT MONTE CARLO ENGINE")
     logger.info("=" * 55)
 
-    # --- Black-Scholes ---
+    # Black-Scholes benchmark
     bs = BlackScholesPricer(config)
     bs_summary = bs.summary()
-
-    logger.info("BLACK-SCHOLES (Analytical)")
+    logger.info("BLACK-SCHOLES (Analytical Benchmark)")
     logger.info(f"  Price : {bs_summary['price']:.6f}")
     logger.info(f"  Delta : {bs_summary['delta']:.6f}")
     logger.info(f"  Gamma : {bs_summary['gamma']:.6f}")
     logger.info(f"  Vega  : {bs_summary['vega']:.6f}")
     logger.info(f"  Theta : {bs_summary['theta']:.6f}")
-
     logger.info("-" * 55)
 
-    # --- Monte Carlo ---
+    # Standard Monte Carlo
     mc = MonteCarloPricer(config)
     mc_result = mc.price(random_seed=42)
-
-    logger.info("MONTE CARLO (Simulation)")
-    logger.info(f"  Price     : {mc_result['price']:.6f}")
-    logger.info(f"  Std Error : {mc_result['std_error']:.6f}")
-    logger.info(f"  95% CI    : [{mc_result['ci_lower']:.6f}, {mc_result['ci_upper']:.6f}]")
-
+    print_result("STANDARD MONTE CARLO", mc_result, bs_summary["price"])
     logger.info("-" * 55)
 
-    # --- Comparison ---
-    diff = abs(bs_summary['price'] - mc_result['price'])
-    rel_error = diff / bs_summary['price'] * 100
+    # Antithetic variates
+    anti = AntitheticPricer(config)
+    anti_result = anti.price(random_seed=42)
+    print_result("ANTITHETIC VARIATES", anti_result, bs_summary["price"])
+    logger.info("-" * 55)
 
-    logger.info("COMPARISON")
-    logger.info(f"  Absolute difference : {diff:.6f}")
-    logger.info(f"  Relative error      : {rel_error:.4f}%")
-    logger.info(f"  BS inside MC 95% CI : "
-                f"{'YES' if mc_result['ci_lower'] <= bs_summary['price'] <= mc_result['ci_upper'] else 'NO'}")
+    # Variance reduction summary
+    std_reduction = (1 - anti_result["std_error"] / mc_result["std_error"]) * 100
+    logger.info("VARIANCE REDUCTION SUMMARY")
+    logger.info(f"  Standard MC std error  : {mc_result['std_error']:.6f}")
+    logger.info(f"  Antithetic std error   : {anti_result['std_error']:.6f}")
+    logger.info(f"  Std error reduction    : {std_reduction:.2f}%")
     logger.info("=" * 55)
 
-    # --- Plots ---
+    # Plots
     plotter = Plotter(config)
     plotter.plot_all(random_seed=42)
 
