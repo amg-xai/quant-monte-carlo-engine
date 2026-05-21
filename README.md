@@ -20,6 +20,33 @@ Both Monte Carlo methods produce prices where the Black-Scholes analytical solut
 falls inside the 95% confidence interval — confirming mathematical correctness.
 
 ---
+## Usage
+
+### Synthetic mode
+Price with custom parameters:
+```bash
+python src/cli.py synthetic --S0 100 --K 100 --T 1 --sigma 0.2 --option-type call
+python src/cli.py synthetic --S0 150 --K 155 --T 0.5 --sigma 0.35 --option-type put
+```
+
+### Market mode
+Price using live market data:
+```bash
+python src/cli.py market --ticker AAPL --option-type call
+python src/cli.py market --ticker TSLA --option-type put
+```
+
+## Visualizations
+
+| Plot | Description |
+|---|---|
+| `price_paths.png` | Simulated GBM paths with mean trajectory |
+| `terminal_distribution.png` | Terminal price distribution vs theoretical lognormal |
+| `payoff_distribution.png` | Option payoff distribution with expiry statistics |
+| `convergence.png` | MC vs antithetic convergence toward Black-Scholes |
+| `sensitivity.png` | Price sensitivity to volatility, strike, and maturity |
+| `volatility_smile.png` | Implied volatility smile from live options chain |
+| `volatility_surface.png` | IV surface across strikes and expiries |
 
 ## Architecture
 ---
