@@ -192,6 +192,99 @@ class Plotter:
         plt.close()
         logger.info(f"Saved: {path}")
 
+    def plot_volatility_surface(self, surface_data: list, spot_price: float, ticker: str = ""):
+        """Plot implied volatility surface across strikes and expiries."""
+        logger.info("Generating volatility surface plot...")
+
+        import pandas as pd
+
+        df = pd.DataFrame(surface_data)
+        df = df.dropna(subset=["iv"])
+        calls = df[df["option_type"] == "call"]
+
+        pivot = calls.pivot_table(index="strike", columns="expiry", values="iv")
+        pivot = pivot.dropna(how="all").ffill(axis=1)
+
+        strikes  = pivot.index.values
+        expiries = np.arange(len(pivot.columns))
+        Z        = pivot.values * 100
+
+        fig = plt.figure(figsize=(14, 8))
+        ax  = fig.add_subplot(111, projection="3d")
+
+        X, Y = np.meshgrid(expiries, strikes)
+
+        surf = ax.plot_surface(X, Y, Z, cmap="plasma", alpha=0.85, linewidth=0)
+        fig.colorbar(surf, ax=ax, shrink=0.4, label="Implied Vol (%)")
+
+        ax.set_xlabel("Expiry")
+        ax.set_ylabel("Strike ($)")
+        ax.set_zlabel("IV (%)")
+        ax.set_title(f"Volatility Surface — {ticker}", fontsize=13, pad=20)
+
+        ax.set_xticks(expiries)
+        ax.set_xticklabels(pivot.columns, rotation=45, fontsize=6)
+
+        ax.set_facecolor("#1a1a1a")
+        fig.patch.set_facecolor("#0f0f0f")
+        ax.tick_params(colors="#888888")
+
+        plt.tight_layout()
+        path = f"{self.output_dir}/volatility_surface.png"
+        plt.savefig(path, dpi=150, bbox_inches="tight")
+        plt.close()
+        logger.info(f"Saved: {path}")
+
+    def plot_sensitivity(self, vol_df, strike_df, maturity_df):
+        """Plot option price sensitivity to vol, strike, and maturity."""
+        logger.info("Generating sensitivity analysis plot...")
+
+        fig, (ax1, ax2, ax3) = plt.subplots(1, 3, figsize=(16, 5))
+
+        # Vol sensitivity
+        ax1.plot(vol_df["sigma"] * 100, vol_df["price"],
+                 color=ACCENT, linewidth=2)
+        ax1.axvline(x=self.config.sigma * 100, color=SECONDARY,
+                    linestyle="--", linewidth=1.2, label=f"Current σ = {self.config.sigma*100:.0f}%")
+        ax1.set_title("Price vs Volatility", fontsize=12)
+        ax1.set_xlabel("Volatility (%)")
+        ax1.set_ylabel("Option Price ($)")
+        ax1.legend(framealpha=0.2)
+        ax1.grid(True)
+
+        # Strike sensitivity
+        ax2.plot(strike_df["strike"], strike_df["price"],
+                 color=ACCENT, linewidth=2)
+        ax2.axvline(x=self.config.S0, color=TERTIARY,
+                    linestyle="--", linewidth=1.2, label=f"Spot = ${self.config.S0:.0f}")
+        ax2.axvline(x=self.config.K, color=SECONDARY,
+                    linestyle="--", linewidth=1.2, label=f"Strike = ${self.config.K:.0f}")
+        ax2.set_title("Price vs Strike", fontsize=12)
+        ax2.set_xlabel("Strike ($)")
+        ax2.set_ylabel("Option Price ($)")
+        ax2.legend(framealpha=0.2)
+        ax2.grid(True)
+
+        # Maturity sensitivity
+        ax3.plot(maturity_df["maturity"], maturity_df["price"],
+                 color=ACCENT, linewidth=2)
+        ax3.axvline(x=self.config.T, color=SECONDARY,
+                    linestyle="--", linewidth=1.2, label=f"Current T = {self.config.T:.2f}y")
+        ax3.set_title("Price vs Maturity", fontsize=12)
+        ax3.set_xlabel("Time to Maturity (Years)")
+        ax3.set_ylabel("Option Price ($)")
+        ax3.legend(framealpha=0.2)
+        ax3.grid(True)
+
+        plt.suptitle("Sensitivity Analysis", fontsize=14, y=1.02)
+        plt.tight_layout()
+        path = f"{self.output_dir}/sensitivity.png"
+        plt.savefig(path, dpi=150, bbox_inches="tight")
+        plt.close()
+        logger.info(f"Saved: {path}")
+
+
+
     def plot_volatility_smile(self, chain, spot_price: float, title: str = ""):
         """Plot implied volatility smile/skew from real options chain."""
         logger.info("Generating volatility smile plot...")

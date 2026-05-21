@@ -87,12 +87,43 @@ def run_market_pricing(ticker: str, option_type: str = "call"):
     logger.info(f"  IV vs HV diff   : {abs(market_iv - sigma)*100:.2f}% vol spread")
     logger.info("-" * 55)
 
+    # --- Volatility smile plot ---
     plotter = Plotter(config_iv)
     plotter.plot_volatility_smile(
         chain=chain,
         spot_price=S0,
         title=f"{ticker} | Expiry {expiry}"
     )
+
+    # --- Volatility surface across all expiries ---
+    logger.info("Building volatility surface across all expiries...")
+    surface_data = []
+
+    for exp in expiries[:6]:  # limit to 6 expiries to keep it fast
+        try:
+            exp_dt = datetime.strptime(exp, "%Y-%m-%d")
+            T_exp  = max((exp_dt - datetime.today()).days / 365, 1/365)
+            ch     = fetcher.get_options_chain(expiry=exp)
+            ch     = compute_iv_surface(ch, S=S0, r=RISK_FREE_RATE, T=T_exp)
+
+            for _, row in ch.iterrows():
+                if row["computed_iv"] > 0 and row["computed_iv"] < 5:
+                    surface_data.append({
+                        "expiry":      exp,
+                        "strike":      row["strike"],
+                        "iv":          row["computed_iv"],
+                        "option_type": row["option_type"]
+                    })
+        except Exception as e:
+            logger.warning(f"Skipping expiry {exp}: {e}")
+            continue
+
+    if surface_data:
+        plotter.plot_volatility_surface(
+            surface_data=surface_data,
+            spot_price=S0,
+            ticker=ticker
+        )
 
     logger.info("=" * 55)
     logger.info("Market pricing complete.")
