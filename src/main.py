@@ -1,21 +1,25 @@
 from config.simulation_config import SimulationConfig
+from src.stochastic.gbm import GeometricBrownianMotion
+from src.utils.logger import get_logger
+
+logger = get_logger(__name__)
 
 def main():
+    logger.info("Initializing simulation engine...")
+
     config = SimulationConfig()
-    print("=" * 50)
-    print("  Quant Monte Carlo Engine")
-    print("=" * 50)
-    print(f"  Asset:        S0 = {config.S0}")
-    print(f"  Strike:       K  = {config.K}")
-    print(f"  Maturity:     T  = {config.T} year(s)")
-    print(f"  Risk-free:    r  = {config.r}")
-    print(f"  Volatility:   σ  = {config.sigma}")
-    print(f"  Steps:        {config.n_steps}")
-    print(f"  Simulations:  {config.n_simulations:,}")
-    print(f"  Option type:  {config.option_type}")
-    print("=" * 50)
-    print("  Configuration loaded. Engine ready.")
-    print("=" * 50)
+    gbm = GeometricBrownianMotion(config)
+
+    logger.info(f"Running {config.n_simulations:,} simulations over {config.n_steps} steps...")
+
+    paths = gbm.simulate(random_seed=42)
+
+    logger.info(f"Simulation complete.")
+    logger.info(f"Path matrix shape: {paths.shape}")
+    logger.info(f"Starting price (all paths): {paths[:, 0].mean():.2f}")
+    logger.info(f"Mean terminal price:        {paths[:, -1].mean():.2f}")
+    logger.info(f"Min terminal price:         {paths[:, -1].min():.2f}")
+    logger.info(f"Max terminal price:         {paths[:, -1].max():.2f}")
 
 if __name__ == "__main__":
     main()
