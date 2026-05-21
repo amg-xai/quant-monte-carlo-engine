@@ -192,6 +192,39 @@ class Plotter:
         plt.close()
         logger.info(f"Saved: {path}")
 
+    def plot_volatility_smile(self, chain, spot_price: float, title: str = ""):
+        """Plot implied volatility smile/skew from real options chain."""
+        logger.info("Generating volatility smile plot...")
+
+        import pandas as pd
+
+        calls = chain[chain["option_type"] == "call"].dropna(subset=["computed_iv"])
+        puts  = chain[chain["option_type"] == "put"].dropna(subset=["computed_iv"])
+
+        fig, ax = plt.subplots(figsize=(12, 6))
+
+        ax.plot(calls["strike"], calls["computed_iv"] * 100,
+                color=ACCENT, linewidth=2, marker="o", markersize=3, label="Call IV")
+        ax.plot(puts["strike"], puts["computed_iv"] * 100,
+                color=SECONDARY, linewidth=2, marker="o", markersize=3, label="Put IV")
+
+        ax.axvline(x=spot_price, color=TERTIARY, linewidth=1.5,
+                   linestyle="--", label=f"Spot = ${spot_price:.2f}")
+
+        ax.set_title(f"Implied Volatility Smile — {title}", fontsize=14, pad=15)
+        ax.set_xlabel("Strike Price ($)")
+        ax.set_ylabel("Implied Volatility (%)")
+        ax.legend(framealpha=0.2)
+        ax.grid(True)
+
+        plt.tight_layout()
+        path = f"{self.output_dir}/volatility_smile.png"
+        plt.savefig(path, dpi=150, bbox_inches="tight")
+        plt.close()
+        logger.info(f"Saved: {path}")
+
+        
+
     def plot_all(self, results: dict = None, bs_price: float = None, random_seed: int = 42):
         self.plot_price_paths(random_seed=random_seed)
         self.plot_terminal_distribution(random_seed=random_seed)
